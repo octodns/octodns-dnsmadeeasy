@@ -1,5 +1,3 @@
-TODO: Review this README and add or modify as necessary.
-
 ## DnsMadeEasyProvider provider for octoDNS
 
 An [octoDNS](https://github.com/octodns/octodns/) provider that targets [DNS Made Easy](https://dnsmadeeasy.com/).
@@ -38,21 +36,25 @@ octodns_dnsmadeeasy==0.0.1
 providers:
   dnsmadeeasy:
     class: octodns_dnsmadeeasy.DnsMadeEasyProvider
-    # TODO
+    # Your DnsMadeEasy api key (required)
+    api_key: env/DNSMADEEASY_API_KEY
+    # Your DnsMadeEasy secret key (required)
+    secret_key: env/DNSMADEEASY_SECRET_KEY
+    # Whether or not to use Sandbox environment
+    # (optional, default is false)
+    #sandbox: true
 ```
 
 ### Support Information
 
 #### Records
 
-TODO: All octoDNS record types are supported.
+DnsMadeEasyProvider supports A, AAAA, ALIAS (ANAME), CAA, CNAME, MX, NS, PTR, SPF, SRV, and TXT. There are some restrictions on CAA tags.
 
 #### Dynamic
 
-TODO: DnsMadeEasyProvider does not support dynamic records.
+DnsMadeEasyProvider does not support dynamic records.
 
 ### Developement
 
 See the [/script/](/script/) directory for some tools to help with the development process. They generally follow the [Script to rule them all](https://github.com/github/scripts-to-rule-them-all) pattern. Most useful is `./script/bootstrap` which will create a venv and install both the runtime and development related requirements. It will also hook up a pre-commit hook that covers most of what's run by CI.
-
-TODO: any provider specific setup, a docker compose to run things locally etc?
