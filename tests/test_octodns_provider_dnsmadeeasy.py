@@ -22,21 +22,26 @@ class TestDnsMadeEasyProvider(TestCase):
     source.populate(expected)
 
     # Our test suite differs a bit, add our NS and remove the simple one
-    expected.add_record(Record.new(expected, 'under', {
-        'ttl': 3600,
-        'type': 'NS',
-        'values': [
-            'ns1.unit.tests.',
-            'ns2.unit.tests.',
-        ]
-    }))
+    expected.add_record(
+        Record.new(
+            expected,
+            'under',
+            {
+                'ttl': 3600,
+                'type': 'NS',
+                'values': ['ns1.unit.tests.', 'ns2.unit.tests.'],
+            },
+        )
+    )
 
     # Add some ALIAS records
-    expected.add_record(Record.new(expected, '', {
-        'ttl': 1800,
-        'type': 'ALIAS',
-        'value': 'aname.unit.tests.'
-    }))
+    expected.add_record(
+        Record.new(
+            expected,
+            '',
+            {'ttl': 1800, 'type': 'ALIAS', 'value': 'aname.unit.tests.'},
+        )
+    )
 
     for record in list(expected.records):
         if record.name == 'sub' and record._type == 'NS':
@@ -48,8 +53,9 @@ class TestDnsMadeEasyProvider(TestCase):
 
         # Bad auth
         with requests_mock() as mock:
-            mock.get(ANY, status_code=401,
-                     text='{"error": ["API key not found"]}')
+            mock.get(
+                ANY, status_code=401, text='{"error": ["API key not found"]}'
+            )
 
             with self.assertRaises(Exception) as ctx:
                 zone = Zone('unit.tests.', [])
@@ -58,8 +64,9 @@ class TestDnsMadeEasyProvider(TestCase):
 
         # Bad request
         with requests_mock() as mock:
-            mock.get(ANY, status_code=400,
-                     text='{"error": ["Rate limit exceeded"]}')
+            mock.get(
+                ANY, status_code=400, text='{"error": ["Rate limit exceeded"]}'
+            )
 
             with self.assertRaises(Exception) as ctx:
                 zone = Zone('unit.tests.', [])
@@ -77,8 +84,11 @@ class TestDnsMadeEasyProvider(TestCase):
 
         # Non-existent zone doesn't populate anything
         with requests_mock() as mock:
-            mock.get(ANY, status_code=404,
-                     text='<html><head></head><body></body></html>')
+            mock.get(
+                ANY,
+                status_code=404,
+                text='<html><head></head><body></body></html>',
+            )
 
             zone = Zone('unit.tests.', [])
             provider.populate(zone)
@@ -121,7 +131,7 @@ class TestDnsMadeEasyProvider(TestCase):
         resp.json.side_effect = [
             DnsMadeEasyClientNotFound,  # no zone in populate
             DnsMadeEasyClientNotFound,  # no domain during apply
-            domains
+            domains,
         ]
         plan = provider.plan(self.expected)
 
@@ -130,94 +140,131 @@ class TestDnsMadeEasyProvider(TestCase):
         self.assertEqual(n, len(plan.changes))
         self.assertEqual(n, provider.apply(plan))
 
-        provider._client._request.assert_has_calls([
-            # created the domain
-            call('POST', '/', data={'name': 'unit.tests'}),
-            # get all domains to build the cache
-            call('GET', '/'),
-            # created at least some of the record with expected data
-            call('POST', '/123123/records', data={
-                'type': 'A',
-                'name': '',
-                'value': '1.2.3.4',
-                'ttl': 300}),
-            call('POST', '/123123/records', data={
-                'type': 'A',
-                'name': '',
-                'value': '1.2.3.5',
-                'ttl': 300}),
-            call('POST', '/123123/records', data={
-                'type': 'ANAME',
-                'name': '',
-                'value': 'aname.unit.tests.',
-                'ttl': 1800}),
-            call('POST', '/123123/records', data={
-                'name': '',
-                'value': 'ca.unit.tests',
-                'issuerCritical': 0, 'caaType': 'issue',
-                'ttl': 3600, 'type': 'CAA'}),
-            call('POST', '/123123/records', data={
-                'name': '_srv._tcp',
-                'weight': 20,
-                'value': 'foo-1.unit.tests.',
-                'priority': 10,
-                'ttl': 600,
-                'type': 'SRV',
-                'port': 30
-            }),
-        ])
+        provider._client._request.assert_has_calls(
+            [
+                # created the domain
+                call('POST', '/', data={'name': 'unit.tests'}),
+                # get all domains to build the cache
+                call('GET', '/'),
+                # created at least some of the record with expected data
+                call(
+                    'POST',
+                    '/123123/records',
+                    data={
+                        'type': 'A',
+                        'name': '',
+                        'value': '1.2.3.4',
+                        'ttl': 300,
+                    },
+                ),
+                call(
+                    'POST',
+                    '/123123/records',
+                    data={
+                        'type': 'A',
+                        'name': '',
+                        'value': '1.2.3.5',
+                        'ttl': 300,
+                    },
+                ),
+                call(
+                    'POST',
+                    '/123123/records',
+                    data={
+                        'type': 'ANAME',
+                        'name': '',
+                        'value': 'aname.unit.tests.',
+                        'ttl': 1800,
+                    },
+                ),
+                call(
+                    'POST',
+                    '/123123/records',
+                    data={
+                        'name': '',
+                        'value': 'ca.unit.tests',
+                        'issuerCritical': 0,
+                        'caaType': 'issue',
+                        'ttl': 3600,
+                        'type': 'CAA',
+                    },
+                ),
+                call(
+                    'POST',
+                    '/123123/records',
+                    data={
+                        'name': '_srv._tcp',
+                        'weight': 20,
+                        'value': 'foo-1.unit.tests.',
+                        'priority': 10,
+                        'ttl': 600,
+                        'type': 'SRV',
+                        'port': 30,
+                    },
+                ),
+            ]
+        )
         self.assertEqual(26, provider._client._request.call_count)
 
         provider._client._request.reset_mock()
 
         # delete 1 and update 1
-        provider._client.records = Mock(return_value=[
-            {
-                'id': 11189897,
-                'name': 'www',
-                'value': '1.2.3.4',
-                'ttl': 300,
-                'type': 'A',
-            },
-            {
-                'id': 11189898,
-                'name': 'www',
-                'value': '2.2.3.4',
-                'ttl': 300,
-                'type': 'A',
-            },
-            {
-                'id': 11189899,
-                'name': 'ttl',
-                'value': '3.2.3.4',
-                'ttl': 600,
-                'type': 'A',
-            }
-        ])
+        provider._client.records = Mock(
+            return_value=[
+                {
+                    'id': 11189897,
+                    'name': 'www',
+                    'value': '1.2.3.4',
+                    'ttl': 300,
+                    'type': 'A',
+                },
+                {
+                    'id': 11189898,
+                    'name': 'www',
+                    'value': '2.2.3.4',
+                    'ttl': 300,
+                    'type': 'A',
+                },
+                {
+                    'id': 11189899,
+                    'name': 'ttl',
+                    'value': '3.2.3.4',
+                    'ttl': 600,
+                    'type': 'A',
+                },
+            ]
+        )
 
         # Domain exists, we don't care about return
         resp.json.side_effect = ['{}']
 
         wanted = Zone('unit.tests.', [])
-        wanted.add_record(Record.new(wanted, 'ttl', {
-            'ttl': 300,
-            'type': 'A',
-            'value': '3.2.3.4'
-        }))
+        wanted.add_record(
+            Record.new(
+                wanted, 'ttl', {'ttl': 300, 'type': 'A', 'value': '3.2.3.4'}
+            )
+        )
 
         plan = provider.plan(wanted)
         self.assertEqual(2, len(plan.changes))
         self.assertEqual(2, provider.apply(plan))
 
         # recreate for update, and deletes for the 2 parts of the other
-        provider._client._request.assert_has_calls([
-            call('POST', '/123123/records', data={
-                'value': '3.2.3.4',
-                'type': 'A',
-                'name': 'ttl',
-                'ttl': 300
-            }),
-            call('DELETE', '/123123/records/11189899'),
-            call('DELETE', '/123123/records/11189897'),
-            call('DELETE', '/123123/records/11189898')
-        ], any_order=True)
+        provider._client._request.assert_has_calls(
+            [
+                call(
+                    'POST',
+                    '/123123/records',
+                    data={
+                        'value': '3.2.3.4',
+                        'type': 'A',
+                        'name': 'ttl',
+                        'ttl': 300,
+                    },
+                ),
+                call('DELETE', '/123123/records/11189899'),
+                call('DELETE', '/123123/records/11189897'),
+                call('DELETE', '/123123/records/11189898'),
+            ],
+            any_order=True,
+        )

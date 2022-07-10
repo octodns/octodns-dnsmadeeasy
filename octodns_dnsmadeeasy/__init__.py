@@ -21,20 +21,17 @@ class DnsMadeEasyClientException(ProviderException):
 
 
 class DnsMadeEasyClientBadRequest(DnsMadeEasyClientException):
-
     def __init__(self, resp):
         errors = '\n  - '.join(resp.json()['error'])
         super(DnsMadeEasyClientBadRequest, self).__init__(f'\n  - {errors}')
 
 
 class DnsMadeEasyClientUnauthorized(DnsMadeEasyClientException):
-
     def __init__(self):
         super(DnsMadeEasyClientUnauthorized, self).__init__('Unauthorized')
 
 
 class DnsMadeEasyClientNotFound(DnsMadeEasyClientException):
-
     def __init__(self):
         super(DnsMadeEasyClientNotFound, self).__init__('Not Found')
 
@@ -43,8 +40,7 @@ class DnsMadeEasyClient(object):
     PRODUCTION = 'https://api.dnsmadeeasy.com/V2.0/dns/managed'
     SANDBOX = 'https://api.sandbox.dnsmadeeasy.com/V2.0/dns/managed'
 
-    def __init__(self, api_key, secret_key, sandbox=False,
-                 ratelimit_delay=0.0):
+    def __init__(self, api_key, secret_key, sandbox=False, ratelimit_delay=0.0):
         self.api_key = api_key
         self.secret_key = secret_key
         self._base = self.SANDBOX if sandbox else self.PRODUCTION
@@ -57,21 +53,20 @@ class DnsMadeEasyClient(object):
         return strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())
 
     def _hmac_hash(self, now):
-        return hmac.new(self.secret_key.encode(), now.encode(),
-                        hashlib.sha1).hexdigest()
+        return hmac.new(
+            self.secret_key.encode(), now.encode(), hashlib.sha1
+        ).hexdigest()
 
     def _request(self, method, path, params=None, data=None):
         now = self._current_time()
         hmac_hash = self._hmac_hash(now)
 
-        headers = {
-            'x-dnsme-hmac': hmac_hash,
-            'x-dnsme-requestDate': now
-        }
+        headers = {'x-dnsme-hmac': hmac_hash, 'x-dnsme-requestDate': now}
 
         url = f'{self._base}{path}'
-        resp = self._sess.request(method, url, headers=headers,
-                                  params=params, json=data)
+        resp = self._sess.request(
+            method, url, headers=headers, params=params, json=data
+        )
         if resp.status_code == 400:
             raise DnsMadeEasyClientBadRequest(resp)
         if resp.status_code in [401, 403]:
@@ -145,17 +140,42 @@ class DnsMadeEasyClient(object):
 class DnsMadeEasyProvider(BaseProvider):
     SUPPORTS_GEO = False
     SUPPORTS_DYNAMIC = False
-    SUPPORTS = set(('A', 'AAAA', 'ALIAS', 'CAA', 'CNAME', 'MX',
-                    'NS', 'PTR', 'SPF', 'SRV', 'TXT'))
+    SUPPORTS = set(
+        (
+            'A',
+            'AAAA',
+            'ALIAS',
+            'CAA',
+            'CNAME',
+            'MX',
+            'NS',
+            'PTR',
+            'SPF',
+            'SRV',
+            'TXT',
+        )
+    )
 
-    def __init__(self, id, api_key, secret_key, sandbox=False,
-                 ratelimit_delay=0.0, *args, **kwargs):
+    def __init__(
+        self,
+        id,
+        api_key,
+        secret_key,
+        sandbox=False,
+        ratelimit_delay=0.0,
+        *args,
+        **kwargs,
+    ):
         self.log = logging.getLogger(f'DnsMadeEasyProvider[{id}]')
-        self.log.debug('__init__: id=%s, api_key=***, secret_key=***, '
-                       'sandbox=%s', id, sandbox)
+        self.log.debug(
+            '__init__: id=%s, api_key=***, secret_key=***, ' 'sandbox=%s',
+            id,
+            sandbox,
+        )
         super(DnsMadeEasyProvider, self).__init__(id, *args, **kwargs)
-        self._client = DnsMadeEasyClient(api_key, secret_key, sandbox,
-                                         ratelimit_delay)
+        self._client = DnsMadeEasyClient(
+            api_key, secret_key, sandbox, ratelimit_delay
+        )
 
         self._zone_records = {}
 
@@ -163,7 +183,7 @@ class DnsMadeEasyProvider(BaseProvider):
         return {
             'ttl': records[0]['ttl'],
             'type': _type,
-            'values': [r['value'] for r in records]
+            'values': [r['value'] for r in records],
         }
 
     _data_for_A = _data_for_multiple
@@ -173,47 +193,32 @@ class DnsMadeEasyProvider(BaseProvider):
     def _data_for_CAA(self, _type, records):
         values = []
         for record in records:
-            values.append({
-                'flags': record['issuerCritical'],
-                'tag': record['caaType'],
-                'value': record['value'][1:-1]
-            })
-        return {
-            'ttl': records[0]['ttl'],
-            'type': _type,
-            'values': values
-        }
+            values.append(
+                {
+                    'flags': record['issuerCritical'],
+                    'tag': record['caaType'],
+                    'value': record['value'][1:-1],
+                }
+            )
+        return {'ttl': records[0]['ttl'], 'type': _type, 'values': values}
 
     def _data_for_TXT(self, _type, records):
         values = [value['value'].replace(';', '\\;') for value in records]
-        return {
-            'ttl': records[0]['ttl'],
-            'type': _type,
-            'values': values
-        }
+        return {'ttl': records[0]['ttl'], 'type': _type, 'values': values}
 
     _data_for_SPF = _data_for_TXT
 
     def _data_for_MX(self, _type, records):
         values = []
         for record in records:
-            values.append({
-                'preference': record['mxLevel'],
-                'exchange': record['value']
-            })
-        return {
-            'ttl': records[0]['ttl'],
-            'type': _type,
-            'values': values
-        }
+            values.append(
+                {'preference': record['mxLevel'], 'exchange': record['value']}
+            )
+        return {'ttl': records[0]['ttl'], 'type': _type, 'values': values}
 
     def _data_for_single(self, _type, records):
         record = records[0]
-        return {
-            'ttl': record['ttl'],
-            'type': _type,
-            'value': record['value']
-        }
+        return {'ttl': record['ttl'], 'type': _type, 'value': record['value']}
 
     _data_for_CNAME = _data_for_single
     _data_for_PTR = _data_for_single
@@ -222,38 +227,40 @@ class DnsMadeEasyProvider(BaseProvider):
     def _data_for_SRV(self, _type, records):
         values = []
         for record in records:
-            values.append({
-                'port': record['port'],
-                'priority': record['priority'],
-                'target': record['value'],
-                'weight': record['weight']
-            })
-        return {
-            'type': _type,
-            'ttl': records[0]['ttl'],
-            'values': values
-        }
+            values.append(
+                {
+                    'port': record['port'],
+                    'priority': record['priority'],
+                    'target': record['value'],
+                    'weight': record['weight'],
+                }
+            )
+        return {'type': _type, 'ttl': records[0]['ttl'], 'values': values}
 
     def zone_records(self, zone):
         if zone.name not in self._zone_records:
             try:
-                self._zone_records[zone.name] = \
-                    self._client.records(zone.name)
+                self._zone_records[zone.name] = self._client.records(zone.name)
             except DnsMadeEasyClientNotFound:
                 return []
 
         return self._zone_records[zone.name]
 
     def populate(self, zone, target=False, lenient=False):
-        self.log.debug('populate: name=%s, target=%s, lenient=%s', zone.name,
-                       target, lenient)
+        self.log.debug(
+            'populate: name=%s, target=%s, lenient=%s',
+            zone.name,
+            target,
+            lenient,
+        )
 
         values = defaultdict(lambda: defaultdict(list))
         for record in self.zone_records(zone):
             _type = record['type']
             if _type not in self.SUPPORTS:
-                self.log.warning('populate: skipping unsupported %s record',
-                                 _type)
+                self.log.warning(
+                    'populate: skipping unsupported %s record', _type
+                )
                 continue
             values[record['name']][record['type']].append(record)
 
@@ -261,13 +268,21 @@ class DnsMadeEasyProvider(BaseProvider):
         for name, types in values.items():
             for _type, records in types.items():
                 data_for = getattr(self, f'_data_for_{_type}')
-                record = Record.new(zone, name, data_for(_type, records),
-                                    source=self, lenient=lenient)
+                record = Record.new(
+                    zone,
+                    name,
+                    data_for(_type, records),
+                    source=self,
+                    lenient=lenient,
+                )
                 zone.add_record(record, lenient=lenient)
 
         exists = zone.name in self._zone_records
-        self.log.info('populate:   found %s records, exists=%s',
-                      len(zone.records) - before, exists)
+        self.log.info(
+            'populate:   found %s records, exists=%s',
+            len(zone.records) - before,
+            exists,
+        )
         return exists
 
     def supports(self, record):
@@ -288,7 +303,8 @@ class DnsMadeEasyProvider(BaseProvider):
             if "." in targets:
                 self.log.warning(
                     'supports: unsupported %s record with target (%s)',
-                    record._type, targets
+                    record._type,
+                    targets,
                 )
                 return False
 
@@ -300,7 +316,7 @@ class DnsMadeEasyProvider(BaseProvider):
                 'value': value,
                 'name': record.name,
                 'ttl': record.ttl,
-                'type': record._type
+                'type': record._type,
             }
 
     _params_for_A = _params_for_multiple
@@ -316,7 +332,7 @@ class DnsMadeEasyProvider(BaseProvider):
             'value': record.value,
             'name': record.name,
             'ttl': record.ttl,
-            'type': record._type
+            'type': record._type,
         }
 
     _params_for_CNAME = _params_for_single
@@ -330,7 +346,7 @@ class DnsMadeEasyProvider(BaseProvider):
                 'name': record.name,
                 'mxLevel': value.preference,
                 'ttl': record.ttl,
-                'type': record._type
+                'type': record._type,
             }
 
     def _params_for_SRV(self, record):
@@ -342,7 +358,7 @@ class DnsMadeEasyProvider(BaseProvider):
                 'priority': value.priority,
                 'ttl': record.ttl,
                 'type': record._type,
-                'weight': value.weight
+                'weight': value.weight,
             }
 
     def _params_for_TXT(self, record):
@@ -352,7 +368,7 @@ class DnsMadeEasyProvider(BaseProvider):
                 'value': value.replace('\\;', ';'),
                 'name': record.name,
                 'ttl': record.ttl,
-                'type': record._type
+                'type': record._type,
             }
 
     _params_for_SPF = _params_for_TXT
@@ -365,7 +381,7 @@ class DnsMadeEasyProvider(BaseProvider):
                 'name': record.name,
                 'caaType': value.tag,
                 'ttl': record.ttl,
-                'type': record._type
+                'type': record._type,
             }
 
     def _apply_Create(self, change):
@@ -382,15 +398,18 @@ class DnsMadeEasyProvider(BaseProvider):
         existing = change.existing
         zone = existing.zone
         for record in self.zone_records(zone):
-            if existing.name == record['name'] and \
-               existing._type == record['type']:
+            if (
+                existing.name == record['name']
+                and existing._type == record['type']
+            ):
                 self._client.record_delete(zone.name, record['id'])
 
     def _apply(self, plan):
         desired = plan.desired
         changes = plan.changes
-        self.log.debug('_apply: zone=%s, len(changes)=%d', desired.name,
-                       len(changes))
+        self.log.debug(
+            '_apply: zone=%s, len(changes)=%d', desired.name, len(changes)
+        )
 
         domain_name = desired.name[:-1]
         try:
