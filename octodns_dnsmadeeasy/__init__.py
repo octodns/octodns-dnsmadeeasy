@@ -23,17 +23,17 @@ class DnsMadeEasyClientException(ProviderException):
 class DnsMadeEasyClientBadRequest(DnsMadeEasyClientException):
     def __init__(self, resp):
         errors = '\n  - '.join(resp.json()['error'])
-        super(DnsMadeEasyClientBadRequest, self).__init__(f'\n  - {errors}')
+        super().__init__(f'\n  - {errors}')
 
 
 class DnsMadeEasyClientUnauthorized(DnsMadeEasyClientException):
     def __init__(self):
-        super(DnsMadeEasyClientUnauthorized, self).__init__('Unauthorized')
+        super().__init__('Unauthorized')
 
 
 class DnsMadeEasyClientNotFound(DnsMadeEasyClientException):
     def __init__(self):
-        super(DnsMadeEasyClientNotFound, self).__init__('Not Found')
+        super().__init__('Not Found')
 
 
 class DnsMadeEasyClient(object):
@@ -168,11 +168,11 @@ class DnsMadeEasyProvider(BaseProvider):
     ):
         self.log = logging.getLogger(f'DnsMadeEasyProvider[{id}]')
         self.log.debug(
-            '__init__: id=%s, api_key=***, secret_key=***, ' 'sandbox=%s',
+            '__init__: id=%s, api_key=***, secret_key=***, sandbox=%s',
             id,
             sandbox,
         )
-        super(DnsMadeEasyProvider, self).__init__(id, *args, **kwargs)
+        super().__init__(id, *args, **kwargs)
         self._client = DnsMadeEasyClient(
             api_key, secret_key, sandbox, ratelimit_delay
         )
@@ -308,7 +308,7 @@ class DnsMadeEasyProvider(BaseProvider):
                 )
                 return False
 
-        return super(DnsMadeEasyProvider, self).supports(record)
+        return super().supports(record)
 
     def _params_for_multiple(self, record):
         for value in record.values:
