@@ -118,7 +118,9 @@ class TestDnsMadeEasyProvider(TestCase):
 
     def test_apply(self):
         # Create provider with sandbox enabled
-        provider = DnsMadeEasyProvider('test', 'api', 'secret', True)
+        provider = DnsMadeEasyProvider(
+            'test', 'api', 'secret', True, strict_supports=False
+        )
 
         resp = Mock()
         resp.json = Mock()
