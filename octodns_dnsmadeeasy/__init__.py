@@ -140,6 +140,7 @@ class DnsMadeEasyClient(object):
 class DnsMadeEasyProvider(BaseProvider):
     SUPPORTS_GEO = False
     SUPPORTS_DYNAMIC = False
+    SUPPORTS_ROOT_NS = True
     SUPPORTS = set(
         (
             'A',
