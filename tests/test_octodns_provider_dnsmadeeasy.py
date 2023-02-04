@@ -2,15 +2,17 @@
 #
 #
 
+import json
 from os.path import dirname, join
-from requests import HTTPError
-from requests_mock import ANY, mock as requests_mock
 from unittest import TestCase
 from unittest.mock import Mock, call
-import json
 
-from octodns.record import Record
+from requests import HTTPError
+from requests_mock import ANY
+from requests_mock import mock as requests_mock
+
 from octodns.provider.yaml import YamlProvider
+from octodns.record import Record
 from octodns.zone import Zone
 
 from octodns_dnsmadeeasy import DnsMadeEasyClientNotFound, DnsMadeEasyProvider
