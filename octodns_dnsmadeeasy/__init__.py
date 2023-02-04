@@ -2,16 +2,17 @@
 #
 #
 
-from collections import defaultdict
-from requests import Session
-from time import strftime, gmtime, sleep
 import hashlib
 import hmac
 import logging
+from collections import defaultdict
+from time import gmtime, sleep, strftime
 
-from octodns.record import Record
+from requests import Session
+
 from octodns.provider import ProviderException
 from octodns.provider.base import BaseProvider
+from octodns.record import Record
 
 __VERSION__ = '0.0.1'
 
