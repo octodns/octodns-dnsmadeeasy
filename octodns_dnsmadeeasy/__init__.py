@@ -51,7 +51,7 @@ class DnsMadeEasyClient(object):
         self._sess.headers.update(
             {
                 'x-dnsme-apiKey': self.api_key,
-                'User-Agent': f'octodns/{octodns_version} octodns-cloudflare/{__VERSION__}',
+                'User-Agent': f'octodns/{octodns_version} octodns-dnsmadeasy/{__VERSION__}',
             }
         )
         self._domains = None
