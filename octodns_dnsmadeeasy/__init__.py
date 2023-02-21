@@ -10,6 +10,7 @@ from time import gmtime, sleep, strftime
 
 from requests import Session
 
+from octodns import __VERSION__ as octodns_version
 from octodns.provider import ProviderException
 from octodns.provider.base import BaseProvider
 from octodns.record import Record
@@ -47,7 +48,12 @@ class DnsMadeEasyClient(object):
         self._base = self.SANDBOX if sandbox else self.PRODUCTION
         self.ratelimit_delay = ratelimit_delay
         self._sess = Session()
-        self._sess.headers.update({'x-dnsme-apiKey': self.api_key})
+        self._sess.headers.update(
+            {
+                'x-dnsme-apiKey': self.api_key,
+                'User-Agent': f'octodns/{octodns_version} octodns-dnsmadeasy/{__VERSION__}',
+            }
+        )
         self._domains = None
 
     def _current_time(self):
