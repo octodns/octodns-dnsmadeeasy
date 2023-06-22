@@ -102,7 +102,7 @@ class DnsMadeEasyClient(object):
         return self._request('GET', path).json()
 
     def domain_create(self, name):
-        self._request('POST', '/', data={'name': name})
+        self._domains[name+"."] = self._request('POST', '/', data={'name': name}).json()['id']
 
     def records(self, zone_name):
         zone_id = self.domains.get(zone_name, False)
