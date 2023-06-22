@@ -108,6 +108,9 @@ class DnsMadeEasyClient(object):
 
     def records(self, zone_name):
         zone_id = self.domains.get(zone_name, False)
+        if not zone_id:
+            return []
+
         path = f'/{zone_id}/records'
         ret = []
 
