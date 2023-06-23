@@ -1,0 +1,54 @@
+{
+	"processMulti": false,
+	"activeThirdParties": [],
+	"gtdEnabled": false,
+	"nameServers": [{
+			"ipv6": "2600:1800:0::1:1f",
+			"ipv4": "208.94.148.159",
+			"fqdn": "ns10.digicertdns.com",
+			"groupId": 1,
+			"id": 1
+		},
+		{
+			"ipv6": "2600:1801:1::1:1f",
+			"ipv4": "208.80.124.159",
+			"fqdn": "ns11.digicertdns.com",
+			"groupId": 1,
+			"id": 2
+		},
+		{
+			"ipv6": "2600:1802:2::1:1f",
+			"ipv4": "208.80.126.159",
+			"fqdn": "ns12.digicertdns.com",
+			"groupId": 1,
+			"id": 3
+		},
+		{
+			"ipv6": "2600:1801:3::1:1f",
+			"ipv4": "208.80.125.159",
+			"fqdn": "ns13.digicertdns.net",
+			"groupId": 1,
+			"id": 4
+		},
+		{
+			"ipv6": "2600:1802:4::1:1f",
+			"ipv4": "208.80.127.159",
+			"fqdn": "ns14.digicertdns.net",
+			"groupId": 1,
+			"id": 5
+		},
+		{
+			"ipv6": "2600:1800:8::1:1f",
+			"ipv4": "208.94.149.159",
+			"fqdn": "ns15.digicertdns.net",
+			"groupId": 1,
+			"id": 18
+		}
+	],
+	"updated": 1511766661574,
+	"folderId": 1990,
+	"created": 1511740800000,
+	"pendingActionId": 1,
+	"name": "unit.tests",
+	"id": 123123
+}

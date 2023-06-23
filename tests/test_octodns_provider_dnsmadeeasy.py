@@ -15,7 +15,11 @@ from octodns.provider.yaml import YamlProvider
 from octodns.record import Record
 from octodns.zone import Zone
 
-from octodns_dnsmadeeasy import DnsMadeEasyClientNotFound, DnsMadeEasyProvider
+from octodns_dnsmadeeasy import (
+    DnsMadeEasyClient,
+    DnsMadeEasyClientNotFound,
+    DnsMadeEasyProvider,
+)
 
 
 class TestDnsMadeEasyProvider(TestCase):
@@ -86,19 +90,16 @@ class TestDnsMadeEasyProvider(TestCase):
 
         # Non-existent zone doesn't populate anything
         with requests_mock() as mock:
-            mock.get(
-                ANY,
-                status_code=404,
-                text='<html><head></head><body></body></html>',
-            )
+            with open('tests/fixtures/dnsmadeeasy-no-domains.json') as fh:
+                mock.get(ANY, text=fh.read())
 
             zone = Zone('unit.tests.', [])
             provider.populate(zone)
-            self.assertEqual(set(), zone.records)
+            self.assertEqual(0, len(zone.records))
 
         # No diffs == no changes
         with requests_mock() as mock:
-            base = 'https://api.dnsmadeeasy.com/V2.0/dns/managed'
+            base = DnsMadeEasyClient.PRODUCTION
             with open('tests/fixtures/dnsmadeeasy-domains.json') as fh:
                 mock.get(f'{base}/', text=fh.read())
             with open('tests/fixtures/dnsmadeeasy-records.json') as fh:
@@ -128,13 +129,21 @@ class TestDnsMadeEasyProvider(TestCase):
         resp.json = Mock()
         provider._client._request = Mock(return_value=resp)
 
+        with open('tests/fixtures/dnsmadeeasy-no-domains.json') as fh:
+            no_domains = json.load(fh)
+
+        with open('tests/fixtures/dnsmadeeasy-domain-create.json') as fh:
+            domain_create = json.load(fh)
+
         with open('tests/fixtures/dnsmadeeasy-domains.json') as fh:
             domains = json.load(fh)
 
         # non-existent domain, create everything
         resp.json.side_effect = [
-            DnsMadeEasyClientNotFound,  # no zone in populate
+            no_domains,
             DnsMadeEasyClientNotFound,  # no domain during apply
+            domain_create,
+            domains,
             domains,
         ]
         plan = provider.plan(self.expected)
@@ -146,10 +155,12 @@ class TestDnsMadeEasyProvider(TestCase):
 
         provider._client._request.assert_has_calls(
             [
-                # created the domain
-                call('POST', '/', data={'name': 'unit.tests'}),
                 # get all domains to build the cache
                 call('GET', '/'),
+                # checked if domain exists
+                call('GET', '/id/unit.tests'),
+                # created the domain
+                call('POST', '/', data={'name': 'unit.tests'}),
                 # created at least some of the record with expected data
                 call(
                     'POST',
@@ -208,7 +219,7 @@ class TestDnsMadeEasyProvider(TestCase):
                 ),
             ]
         )
-        self.assertEqual(26, provider._client._request.call_count)
+        self.assertEqual(25, provider._client._request.call_count)
 
         provider._client._request.reset_mock()
 

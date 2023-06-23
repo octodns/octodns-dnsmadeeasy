@@ -103,8 +103,7 @@ class DnsMadeEasyClient(object):
 
     def domain_create(self, name):
         resp = self._request('POST', '/', data={'name': name})
-        _id = resp.json()['data'][0]['id']
-        self.domains[f'{name}.'] = _id
+        self.domains[f'{name}.'] = resp.json()['id']
 
     def records(self, zone_name):
         zone_id = self.domains.get(zone_name, False)
@@ -252,10 +251,7 @@ class DnsMadeEasyProvider(BaseProvider):
 
     def zone_records(self, zone):
         if zone.name not in self._zone_records:
-            try:
-                self._zone_records[zone.name] = self._client.records(zone.name)
-            except DnsMadeEasyClientNotFound:
-                return []
+            self._zone_records[zone.name] = self._client.records(zone.name)
 
         return self._zone_records[zone.name]
 
