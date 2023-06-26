@@ -108,6 +108,8 @@ class DnsMadeEasyClient(object):
 
     def records(self, zone_name):
         zone_id = self.domains.get(zone_name, False)
+        if not zone_id:
+            return []
         path = f'/{zone_id}/records'
         ret = []
 
@@ -250,10 +252,7 @@ class DnsMadeEasyProvider(BaseProvider):
 
     def zone_records(self, zone):
         if zone.name not in self._zone_records:
-            try:
-                self._zone_records[zone.name] = self._client.records(zone.name)
-            except DnsMadeEasyClientNotFound:
-                return []
+            self._zone_records[zone.name] = self._client.records(zone.name)
 
         return self._zone_records[zone.name]
 

@@ -53,6 +53,15 @@ class TestDnsMadeEasyProvider(TestCase):
     def test_populate(self):
         provider = DnsMadeEasyProvider('test', 'api', 'secret')
 
+        # not found
+        with requests_mock() as mock:
+            mock.get(ANY, status_code=404, text='{"error": ["Not Found"]}')
+
+            with self.assertRaises(Exception) as ctx:
+                zone = Zone('unit.tests.', [])
+                provider.populate(zone)
+            self.assertEqual('Not Found', str(ctx.exception))
+
         # Bad auth
         with requests_mock() as mock:
             mock.get(
@@ -84,18 +93,6 @@ class TestDnsMadeEasyProvider(TestCase):
                 provider.populate(zone)
             self.assertEqual(502, ctx.exception.response.status_code)
 
-        # Non-existent zone doesn't populate anything
-        with requests_mock() as mock:
-            mock.get(
-                ANY,
-                status_code=404,
-                text='<html><head></head><body></body></html>',
-            )
-
-            zone = Zone('unit.tests.', [])
-            provider.populate(zone)
-            self.assertEqual(set(), zone.records)
-
         # No diffs == no changes
         with requests_mock() as mock:
             base = 'https://api.dnsmadeeasy.com/V2.0/dns/managed'
@@ -118,6 +115,18 @@ class TestDnsMadeEasyProvider(TestCase):
         # bust the cache
         del provider._zone_records[zone.name]
 
+    def test_populate_empty(self):
+        provider = DnsMadeEasyProvider('test', 'api', 'secret')
+
+        # Non-existent zone doesn't populate anything
+        with requests_mock() as mock:
+            with open('tests/fixtures/dnsmadeeasy-no-domains.json') as fh:
+                mock.get(ANY, text=fh.read())
+
+            zone = Zone('unit.tests.', [])
+            provider.populate(zone)
+            self.assertEqual(set(), zone.records)
+
     def test_apply(self):
         # Create provider with sandbox enabled
         provider = DnsMadeEasyProvider(
@@ -128,6 +137,9 @@ class TestDnsMadeEasyProvider(TestCase):
         resp.json = Mock()
         provider._client._request = Mock(return_value=resp)
 
+        with open('tests/fixtures/dnsmadeeasy-no-domains.json') as fh:
+            no_domains = json.load(fh)
+
         with open('tests/fixtures/dnsmadeeasy-domains.json') as fh:
             domains = json.load(fh)
 
@@ -136,13 +148,12 @@ class TestDnsMadeEasyProvider(TestCase):
 
         # non-existent domain, create everything
         resp.json.side_effect = [
-            DnsMadeEasyClientNotFound,  # no zone in populate
+            no_domains,  # no zone in populate
             DnsMadeEasyClientNotFound,  # no domain during apply
             created_domain,  # our created domain response
             domains,
         ]
         plan = provider.plan(self.expected)
-        print(plan)
 
         # No ignored, no excluded, no unsupported
         n = len(self.expected.records) - 9
@@ -151,10 +162,12 @@ class TestDnsMadeEasyProvider(TestCase):
 
         provider._client._request.assert_has_calls(
             [
-                # created the domain
-                call('POST', '/', data={'name': 'unit.tests'}),
                 # get all domains to build the cache
                 call('GET', '/'),
+                # attempt to find the domain based on the name
+                call('GET', '/id/unit.tests'),
+                # create the domain
+                call('POST', '/', data={'name': 'unit.tests'}),
                 # created all the non-existent records in a single request
                 call(
                     'POST',
@@ -330,7 +343,7 @@ class TestDnsMadeEasyProvider(TestCase):
                 ),
             ]
         )
-        self.assertEqual(5, provider._client._request.call_count)
+        self.assertEqual(4, provider._client._request.call_count)
 
         provider._client._request.reset_mock()
 
