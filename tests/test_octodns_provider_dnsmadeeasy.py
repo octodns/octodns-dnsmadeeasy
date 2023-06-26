@@ -53,6 +53,15 @@ class TestDnsMadeEasyProvider(TestCase):
     def test_populate(self):
         provider = DnsMadeEasyProvider('test', 'api', 'secret')
 
+        # not found
+        with requests_mock() as mock:
+            mock.get(ANY, status_code=404, text='{"error": ["Not Found"]}')
+
+            with self.assertRaises(Exception) as ctx:
+                zone = Zone('unit.tests.', [])
+                provider.populate(zone)
+            self.assertEqual('Not Found', str(ctx.exception))
+
         # Bad auth
         with requests_mock() as mock:
             mock.get(
@@ -84,18 +93,6 @@ class TestDnsMadeEasyProvider(TestCase):
                 provider.populate(zone)
             self.assertEqual(502, ctx.exception.response.status_code)
 
-        # Non-existent zone doesn't populate anything
-        with requests_mock() as mock:
-            mock.get(
-                ANY,
-                status_code=404,
-                text='<html><head></head><body></body></html>',
-            )
-
-            zone = Zone('unit.tests.', [])
-            provider.populate(zone)
-            self.assertEqual(set(), zone.records)
-
         # No diffs == no changes
         with requests_mock() as mock:
             base = 'https://api.dnsmadeeasy.com/V2.0/dns/managed'
@@ -118,6 +115,18 @@ class TestDnsMadeEasyProvider(TestCase):
         # bust the cache
         del provider._zone_records[zone.name]
 
+    def test_populate_empty(self):
+        provider = DnsMadeEasyProvider('test', 'api', 'secret')
+
+        # Non-existent zone doesn't populate anything
+        with requests_mock() as mock:
+            with open('tests/fixtures/dnsmadeeasy-no-domains.json') as fh:
+                mock.get(ANY, text=fh.read())
+
+            zone = Zone('unit.tests.', [])
+            provider.populate(zone)
+            self.assertEqual(set(), zone.records)
+
     def test_apply(self):
         # Create provider with sandbox enabled
         provider = DnsMadeEasyProvider(
@@ -128,13 +137,20 @@ class TestDnsMadeEasyProvider(TestCase):
         resp.json = Mock()
         provider._client._request = Mock(return_value=resp)
 
+        with open('tests/fixtures/dnsmadeeasy-no-domains.json') as fh:
+            no_domains = json.load(fh)
+
         with open('tests/fixtures/dnsmadeeasy-domains.json') as fh:
             domains = json.load(fh)
 
+        with open('tests/fixtures/dnsmadeeasy-domain-create.json') as fh:
+            created_domain = json.load(fh)
+
         # non-existent domain, create everything
         resp.json.side_effect = [
-            DnsMadeEasyClientNotFound,  # no zone in populate
+            no_domains,  # no zone in populate
             DnsMadeEasyClientNotFound,  # no domain during apply
+            created_domain,  # our created domain response
             domains,
         ]
         plan = provider.plan(self.expected)
@@ -146,69 +162,188 @@ class TestDnsMadeEasyProvider(TestCase):
 
         provider._client._request.assert_has_calls(
             [
-                # created the domain
-                call('POST', '/', data={'name': 'unit.tests'}),
                 # get all domains to build the cache
                 call('GET', '/'),
-                # created at least some of the record with expected data
+                # attempt to find the domain based on the name
+                call('GET', '/id/unit.tests'),
+                # create the domain
+                call('POST', '/', data={'name': 'unit.tests'}),
+                # created all the non-existent records in a single request
                 call(
                     'POST',
-                    '/123123/records',
-                    data={
-                        'type': 'A',
-                        'name': '',
-                        'value': '1.2.3.4',
-                        'ttl': 300,
-                    },
-                ),
-                call(
-                    'POST',
-                    '/123123/records',
-                    data={
-                        'type': 'A',
-                        'name': '',
-                        'value': '1.2.3.5',
-                        'ttl': 300,
-                    },
-                ),
-                call(
-                    'POST',
-                    '/123123/records',
-                    data={
-                        'type': 'ANAME',
-                        'name': '',
-                        'value': 'aname.unit.tests.',
-                        'ttl': 1800,
-                    },
-                ),
-                call(
-                    'POST',
-                    '/123123/records',
-                    data={
-                        'name': '',
-                        'value': 'ca.unit.tests',
-                        'issuerCritical': 0,
-                        'caaType': 'issue',
-                        'ttl': 3600,
-                        'type': 'CAA',
-                    },
-                ),
-                call(
-                    'POST',
-                    '/123123/records',
-                    data={
-                        'name': '_srv._tcp',
-                        'weight': 20,
-                        'value': 'foo-1.unit.tests.',
-                        'priority': 10,
-                        'ttl': 600,
-                        'type': 'SRV',
-                        'port': 30,
-                    },
+                    '/123123/records/createMulti',
+                    data=[
+                        {
+                            'value': '1.2.3.4',
+                            'name': '',
+                            'ttl': 300,
+                            'type': 'A',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': '1.2.3.5',
+                            'name': '',
+                            'ttl': 300,
+                            'type': 'A',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': 'aname.unit.tests.',
+                            'name': '',
+                            'ttl': 1800,
+                            'type': 'ANAME',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': 'ca.unit.tests',
+                            'issuerCritical': 0,
+                            'name': '',
+                            'caaType': 'issue',
+                            'ttl': 3600,
+                            'type': 'CAA',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': 'foo-1.unit.tests.',
+                            'name': '_srv._tcp',
+                            'port': 30,
+                            'priority': 10,
+                            'ttl': 600,
+                            'type': 'SRV',
+                            'weight': 20,
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': 'foo-2.unit.tests.',
+                            'name': '_srv._tcp',
+                            'port': 30,
+                            'priority': 12,
+                            'ttl': 600,
+                            'type': 'SRV',
+                            'weight': 20,
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': '2601:644:500:e210:62f8:1dff:feb8:947a',
+                            'name': 'aaaa',
+                            'ttl': 600,
+                            'type': 'AAAA',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': 'unit.tests.',
+                            'name': 'cname',
+                            'ttl': 300,
+                            'type': 'CNAME',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': 'unit.tests.',
+                            'name': 'included',
+                            'ttl': 3600,
+                            'type': 'CNAME',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': 'smtp-4.unit.tests.',
+                            'name': 'mx',
+                            'mxLevel': 10,
+                            'ttl': 300,
+                            'type': 'MX',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': 'smtp-2.unit.tests.',
+                            'name': 'mx',
+                            'mxLevel': 20,
+                            'ttl': 300,
+                            'type': 'MX',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': 'smtp-3.unit.tests.',
+                            'name': 'mx',
+                            'mxLevel': 30,
+                            'ttl': 300,
+                            'type': 'MX',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': 'smtp-1.unit.tests.',
+                            'name': 'mx',
+                            'mxLevel': 40,
+                            'ttl': 300,
+                            'type': 'MX',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': 'foo.bar.com.',
+                            'name': 'ptr',
+                            'ttl': 300,
+                            'type': 'PTR',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': '"v=spf1 ip4:192.168.0.1/16-all"',
+                            'name': 'spf',
+                            'ttl': 600,
+                            'type': 'SPF',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': '"Bah bah black sheep"',
+                            'name': 'txt',
+                            'ttl': 600,
+                            'type': 'TXT',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': '"have you any wool."',
+                            'name': 'txt',
+                            'ttl': 600,
+                            'type': 'TXT',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': '"v=DKIM1;k=rsa;s=email;h=sha256;p=A/kinda+of/long/string+with+numb3rs"',
+                            'name': 'txt',
+                            'ttl': 600,
+                            'type': 'TXT',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': 'ns1.unit.tests.',
+                            'name': 'under',
+                            'ttl': 3600,
+                            'type': 'NS',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': 'ns2.unit.tests.',
+                            'name': 'under',
+                            'ttl': 3600,
+                            'type': 'NS',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': '2.2.3.6',
+                            'name': 'www',
+                            'ttl': 300,
+                            'type': 'A',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': '2.2.3.6',
+                            'name': 'www.sub',
+                            'ttl': 300,
+                            'type': 'A',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                    ],
                 ),
             ]
         )
-        self.assertEqual(26, provider._client._request.call_count)
+        self.assertEqual(4, provider._client._request.call_count)
 
         provider._client._request.reset_mock()
 
@@ -258,17 +393,54 @@ class TestDnsMadeEasyProvider(TestCase):
             [
                 call(
                     'POST',
-                    '/123123/records',
-                    data={
-                        'value': '3.2.3.4',
-                        'type': 'A',
-                        'name': 'ttl',
-                        'ttl': 300,
-                    },
+                    '/123123/records/createMulti',
+                    data=[
+                        {
+                            'value': '3.2.3.4',
+                            'type': 'A',
+                            'name': 'ttl',
+                            'ttl': 300,
+                            'gtdLocation': 'DEFAULT',
+                        }
+                    ],
                 ),
-                call('DELETE', '/123123/records/11189899'),
-                call('DELETE', '/123123/records/11189897'),
-                call('DELETE', '/123123/records/11189898'),
+                call(
+                    'DELETE',
+                    '/123123/records',
+                    params={'ids': [11189897, 11189898, 11189899]},
+                ),
             ],
             any_order=True,
         )
+        self.assertEqual(3, provider._client._request.call_count)
+
+        # test for just deleting a record, no additions
+
+        provider._client._request.reset_mock()
+        provider._client.records = Mock(
+            return_value=[
+                {
+                    'id': 11189897,
+                    'name': 'www',
+                    'value': '1.2.3.4',
+                    'ttl': 300,
+                    'type': 'A',
+                }
+            ]
+        )
+
+        # Domain exists, we don't care about return
+        resp.json.side_effect = ['{}']
+
+        wanted = Zone('unit.tests.', [])
+
+        plan = provider.plan(wanted)
+        self.assertEqual(1, len(plan.changes))
+        self.assertEqual(1, provider.apply(plan))
+
+        # recreate for update, and deletes for the 2 parts of the other
+        provider._client._request.assert_has_calls(
+            [call('DELETE', '/123123/records', params={'ids': [11189897]})],
+            any_order=True,
+        )
+        self.assertEqual(2, provider._client._request.call_count)

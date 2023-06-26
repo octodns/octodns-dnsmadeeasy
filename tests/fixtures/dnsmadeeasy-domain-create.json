@@ -1,0 +1,38 @@
+{
+  "created": 1520294400000,
+  "folderId": 18954,
+  "gtdEnabled": false,
+  "nameServers": [
+    {
+      "ipv6": "2600:1800:0::1",
+      "ipv4": "208.94.148.2",
+      "fqdn": "ns0.dnsmadeeasy.com"
+    },
+    {
+      "ipv6": "2600:1801:1::1",
+      "ipv4": "208.80.124.2",
+      "fqdn": "ns1.dnsmadeeasy.com"
+    },
+    {
+      "ipv6": "2600:1802:2::1",
+      "ipv4": "208.80.126.2",
+      "fqdn": "ns2.dnsmadeeasy.com"
+    },
+    {
+      "ipv6": "2600:1801:3::1",
+      "ipv4": "208.80.125.2",
+      "fqdn": "ns3.dnsmadeeasy.com"
+    },
+    {
+      "ipv6": "2600:1802:4::1",
+      "ipv4": "208.80.127.2",
+      "fqdn": "ns4.dnsmadeeasy.com"
+    }
+  ],
+  "updated": 1520350904465,
+  "processMulti": false,
+  "activeThirdParties": [],
+  "pendingActionId": 1,
+  "name": "unit.tests",
+  "id": 123123
+}
