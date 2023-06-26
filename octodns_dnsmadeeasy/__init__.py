@@ -133,7 +133,7 @@ class DnsMadeEasyClient(object):
     def record_multi_delete(self, zone_name, record_ids):
         zone_id = self.domains.get(zone_name, False)
         path = f'/{zone_id}/records'
-        self._request('DELETE', path, params={'id': record_ids})
+        self._request('DELETE', path, params={'ids': record_ids})
 
     def record_multi_create(self, zone_name, records):
         zone_id = self.domains.get(zone_name, False)

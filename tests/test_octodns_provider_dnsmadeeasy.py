@@ -394,7 +394,7 @@ class TestDnsMadeEasyProvider(TestCase):
                 call(
                     'DELETE',
                     '/123123/records',
-                    params={'id': [11189897, 11189898, 11189899]},
+                    params={'ids': [11189897, 11189898, 11189899]},
                 ),
             ],
             any_order=True,
@@ -427,7 +427,7 @@ class TestDnsMadeEasyProvider(TestCase):
 
         # recreate for update, and deletes for the 2 parts of the other
         provider._client._request.assert_has_calls(
-            [call('DELETE', '/123123/records', params={'id': [11189897]})],
+            [call('DELETE', '/123123/records', params={'ids': [11189897]})],
             any_order=True,
         )
         self.assertEqual(2, provider._client._request.call_count)
