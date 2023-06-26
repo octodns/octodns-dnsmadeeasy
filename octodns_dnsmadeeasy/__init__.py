@@ -15,7 +15,7 @@ from octodns.provider import ProviderException
 from octodns.provider.base import BaseProvider
 from octodns.record import Record
 
-__VERSION__ = '0.0.2'
+__VERSION__ = '0.0.3'
 
 
 class DnsMadeEasyClientException(ProviderException):
