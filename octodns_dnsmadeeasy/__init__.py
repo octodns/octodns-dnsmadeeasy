@@ -102,7 +102,9 @@ class DnsMadeEasyClient(object):
         return self._request('GET', path).json()
 
     def domain_create(self, name):
-        self._request('POST', '/', data={'name': name})
+        response = self._request('POST', '/', data={'name': name}).json()
+        # Add our newly created domain to the cache
+        self.domains[f'{name}.'] = response['id']
 
     def records(self, zone_name):
         zone_id = self.domains.get(zone_name, False)
@@ -128,20 +130,21 @@ class DnsMadeEasyClient(object):
 
         return ret
 
-    def record_create(self, zone_name, params):
+    def record_multi_delete(self, zone_name, record_ids):
         zone_id = self.domains.get(zone_name, False)
         path = f'/{zone_id}/records'
+        self._request('DELETE', path, params={'id': record_ids})
 
-        # change ALIAS records to ANAME
-        if params['type'] == 'ALIAS':
-            params['type'] = 'ANAME'
-
-        self._request('POST', path, data=params)
-
-    def record_delete(self, zone_name, record_id):
+    def record_multi_create(self, zone_name, records):
         zone_id = self.domains.get(zone_name, False)
-        path = f'/{zone_id}/records/{record_id}'
-        self._request('DELETE', path)
+        path = f'/{zone_id}/records/createMulti'
+
+        # Change ALIAS records to ANAME
+        for record in records:
+            if record['type'] == 'ALIAS':
+                record['type'] = 'ANAME'
+            record['gtdLocation'] = 'DEFAULT'
+        self._request('POST', path, data=records)
 
 
 class DnsMadeEasyProvider(BaseProvider):
@@ -392,17 +395,16 @@ class DnsMadeEasyProvider(BaseProvider):
                 'type': record._type,
             }
 
-    def _apply_Create(self, change):
+    def _mod_Create(self, change):
+        creations = []
         new = change.new
         params_for = getattr(self, f'_params_for_{new._type}')
         for params in params_for(new):
-            self._client.record_create(new.zone.name, params)
+            creations.append(params)
+        return new.zone, [], creations
 
-    def _apply_Update(self, change):
-        self._apply_Delete(change)
-        self._apply_Create(change)
-
-    def _apply_Delete(self, change):
+    def _mod_Delete(self, change):
+        deletions = []
         existing = change.existing
         zone = existing.zone
         for record in self.zone_records(zone):
@@ -410,7 +412,13 @@ class DnsMadeEasyProvider(BaseProvider):
                 existing.name == record['name']
                 and existing._type == record['type']
             ):
-                self._client.record_delete(zone.name, record['id'])
+                deletions.append(record['id'])
+        return zone, deletions, []
+
+    def _mod_Update(self, change):
+        _, deletions, _ = self._mod_Delete(change)
+        zone, _, creations = self._mod_Create(change)
+        return zone, deletions, creations
 
     def _apply(self, plan):
         desired = plan.desired
@@ -426,9 +434,34 @@ class DnsMadeEasyProvider(BaseProvider):
             self.log.debug('_apply:   no matching zone, creating domain')
             self._client.domain_create(domain_name)
 
+        zone_operations = {}
+
+        # Optimise our changes into a single set of creates/delete operations for each zone
         for change in changes:
             class_name = change.__class__.__name__
-            getattr(self, f'_apply_{class_name}')(change)
+            zone, mod_del, mod_create = getattr(self, f'_mod_{class_name}')(
+                change
+            )
+            if zone.name in zone_operations:
+                zone_operations[zone.name]['deletions'].extend(mod_del)
+                zone_operations[zone.name]['creations'].extend(mod_create)
+            else:
+                zone_operations[zone.name] = {
+                    'zone': zone,
+                    'deletions': mod_del,
+                    'creations': mod_create,
+                }
+
+        # Perform our operations
+        for zone_name, operation in zone_operations.items():
+            if operation['deletions']:
+                self._client.record_multi_delete(
+                    zone_name, operation['deletions']
+                )
+            if operation['creations']:
+                self._client.record_multi_create(
+                    zone_name, operation['creations']
+                )
 
         # Clear out the cache if any
         self._zone_records.pop(desired.name, None)
