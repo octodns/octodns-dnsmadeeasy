@@ -144,9 +144,8 @@ class DnsMadeEasyClient(object):
         zone_id = self.domains.get(zone_name, False)
         path = f'/{zone_id}/records'
 
-        # batch requests per our batch size
-        for i in range(0, len(record_ids), self.batch_size):
-            batch = record_ids[i : i + self.batch_size]
+        # there is a maximum batch size for bulk actions, batch the records based on our batch size
+        for batch in self._batch_records(record_ids):
             self._request('DELETE', path, params={'ids': batch})
 
     def record_multi_create(self, zone_name, records):
@@ -159,10 +158,13 @@ class DnsMadeEasyClient(object):
                 record['type'] = 'ANAME'
             record['gtdLocation'] = 'DEFAULT'
 
-        # batch our requests per our batch size
-        for i in range(0, len(records), self.batch_size):
-            batch = records[i : i + self.batch_size]
+        # there is a maximum batch size for bulk actions, batch the records based on our batch size
+        for batch in self._batch_records(records):
             self._request('POST', path, data=batch)
+
+    def _batch_records(self, records):
+        for i in range(0, len(records), self.batch_size):
+            yield records[i : i + self.batch_size]
 
 
 class DnsMadeEasyProvider(BaseProvider):
