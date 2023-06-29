@@ -444,3 +444,175 @@ class TestDnsMadeEasyProvider(TestCase):
             any_order=True,
         )
         self.assertEqual(2, provider._client._request.call_count)
+
+    def test_batching_requests(self):
+        # Create our provider with a batch size of 2
+        provider = DnsMadeEasyProvider(
+            'test', 'api', 'secret', True, batch_size=2, strict_supports=False
+        )
+
+        resp = Mock()
+        resp.json = Mock()
+        provider._client._request = Mock(return_value=resp)
+
+        provider._client.records = Mock(
+            return_value=[
+                {
+                    'id': 11189897,
+                    'name': 'www',
+                    'value': '1.2.3.4',
+                    'ttl': 300,
+                    'type': 'A',
+                },
+                {
+                    'id': 11189898,
+                    'name': 'www',
+                    'value': '2.2.3.4',
+                    'ttl': 300,
+                    'type': 'A',
+                },
+                {
+                    'id': 11189899,
+                    'name': 'ttl',
+                    'value': '3.2.3.4',
+                    'ttl': 600,
+                    'type': 'A',
+                },
+            ]
+        )
+
+        # Domain exists, we don't care about return
+
+        with open('tests/fixtures/dnsmadeeasy-domains.json') as fh:
+            domains = json.load(fh)
+
+        with open('tests/fixtures/dnsmadeeasy-domain-create.json') as fh:
+            created_domain = json.load(fh)
+
+        # non-existent domain, create everything
+        resp.json.side_effect = [
+            created_domain,  # GET /id/unit.tests during plan
+            domains,  # domains during plan
+            domains,  # domains during apply
+        ]
+
+        wanted = Zone('unit.tests.', [])
+        for i in range(1, 10):
+            wanted.add_record(
+                Record.new(
+                    wanted,
+                    f'www{i}',
+                    {'ttl': 300, 'type': 'A', 'value': f'3.2.3.{i}'},
+                )
+            )
+
+        plan = provider.plan(wanted)
+        self.assertEqual(11, len(plan.changes))
+        self.assertEqual(11, provider.apply(plan))
+
+        # recreate for update, and deletes for the 2 parts of the other
+        provider._client._request.assert_has_calls(
+            [
+                call(
+                    'DELETE',
+                    '/123123/records',
+                    params={'ids': [11189899, 11189897]},
+                ),
+                call('DELETE', '/123123/records', params={'ids': [11189898]}),
+                call(
+                    'POST',
+                    '/123123/records/createMulti',
+                    data=[
+                        {
+                            'value': '3.2.3.1',
+                            'type': 'A',
+                            'name': 'www1',
+                            'ttl': 300,
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': '3.2.3.2',
+                            'type': 'A',
+                            'name': 'www2',
+                            'ttl': 300,
+                            'gtdLocation': 'DEFAULT',
+                        },
+                    ],
+                ),
+                call(
+                    'POST',
+                    '/123123/records/createMulti',
+                    data=[
+                        {
+                            'value': '3.2.3.3',
+                            'type': 'A',
+                            'name': 'www3',
+                            'ttl': 300,
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': '3.2.3.4',
+                            'type': 'A',
+                            'name': 'www4',
+                            'ttl': 300,
+                            'gtdLocation': 'DEFAULT',
+                        },
+                    ],
+                ),
+                call(
+                    'POST',
+                    '/123123/records/createMulti',
+                    data=[
+                        {
+                            'value': '3.2.3.5',
+                            'type': 'A',
+                            'name': 'www5',
+                            'ttl': 300,
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': '3.2.3.6',
+                            'type': 'A',
+                            'name': 'www6',
+                            'ttl': 300,
+                            'gtdLocation': 'DEFAULT',
+                        },
+                    ],
+                ),
+                call(
+                    'POST',
+                    '/123123/records/createMulti',
+                    data=[
+                        {
+                            'value': '3.2.3.7',
+                            'type': 'A',
+                            'name': 'www7',
+                            'ttl': 300,
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': '3.2.3.8',
+                            'type': 'A',
+                            'name': 'www8',
+                            'ttl': 300,
+                            'gtdLocation': 'DEFAULT',
+                        },
+                    ],
+                ),
+                call(
+                    'POST',
+                    '/123123/records/createMulti',
+                    data=[
+                        {
+                            'value': '3.2.3.9',
+                            'type': 'A',
+                            'name': 'www9',
+                            'ttl': 300,
+                            'gtdLocation': 'DEFAULT',
+                        }
+                    ],
+                ),
+            ],
+            any_order=True,
+        )
+        self.assertEqual(9, provider._client._request.call_count)

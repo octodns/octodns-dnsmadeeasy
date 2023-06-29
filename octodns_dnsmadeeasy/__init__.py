@@ -42,11 +42,19 @@ class DnsMadeEasyClient(object):
     PRODUCTION = 'https://api.dnsmadeeasy.com/V2.0/dns/managed'
     SANDBOX = 'https://api.sandbox.dnsmadeeasy.com/V2.0/dns/managed'
 
-    def __init__(self, api_key, secret_key, sandbox=False, ratelimit_delay=0.0):
+    def __init__(
+        self,
+        api_key,
+        secret_key,
+        sandbox=False,
+        ratelimit_delay=0.0,
+        batch_size=200,
+    ):
         self.api_key = api_key
         self.secret_key = secret_key
         self._base = self.SANDBOX if sandbox else self.PRODUCTION
         self.ratelimit_delay = ratelimit_delay
+        self.batch_size = batch_size
         self._sess = Session()
         self._sess.headers.update(
             {
@@ -135,18 +143,28 @@ class DnsMadeEasyClient(object):
     def record_multi_delete(self, zone_name, record_ids):
         zone_id = self.domains.get(zone_name, False)
         path = f'/{zone_id}/records'
-        self._request('DELETE', path, params={'ids': record_ids})
+
+        # there is a maximum batch size for bulk actions, batch the records based on our batch size
+        for batch in self._batch_records(record_ids):
+            self._request('DELETE', path, params={'ids': batch})
 
     def record_multi_create(self, zone_name, records):
         zone_id = self.domains.get(zone_name, False)
         path = f'/{zone_id}/records/createMulti'
 
-        # Change ALIAS records to ANAME
+        # change ALIAS records to ANAME
         for record in records:
             if record['type'] == 'ALIAS':
                 record['type'] = 'ANAME'
             record['gtdLocation'] = 'DEFAULT'
-        self._request('POST', path, data=records)
+
+        # there is a maximum batch size for bulk actions, batch the records based on our batch size
+        for batch in self._batch_records(records):
+            self._request('POST', path, data=batch)
+
+    def _batch_records(self, records):
+        for i in range(0, len(records), self.batch_size):
+            yield records[i : i + self.batch_size]
 
 
 class DnsMadeEasyProvider(BaseProvider):
@@ -176,18 +194,20 @@ class DnsMadeEasyProvider(BaseProvider):
         secret_key,
         sandbox=False,
         ratelimit_delay=0.0,
+        batch_size=200,
         *args,
         **kwargs,
     ):
         self.log = logging.getLogger(f'DnsMadeEasyProvider[{id}]')
         self.log.debug(
-            '__init__: id=%s, api_key=***, secret_key=***, sandbox=%s',
+            '__init__: id=%s, api_key=***, secret_key=***, sandbox=%s, batch_size=%s',
             id,
             sandbox,
+            batch_size,
         )
         super().__init__(id, *args, **kwargs)
         self._client = DnsMadeEasyClient(
-            api_key, secret_key, sandbox, ratelimit_delay
+            api_key, secret_key, sandbox, ratelimit_delay, batch_size
         )
 
         self._zone_records = {}

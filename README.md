@@ -43,6 +43,9 @@ providers:
     # Whether or not to use Sandbox environment
     # (optional, default is false)
     #sandbox: true
+    # The maximum number of records to submit in one request to the DnsMadeEasy API
+    # (optional, default is 200)
+    #batch_size: 100
 ```
 
 ### Support Information
