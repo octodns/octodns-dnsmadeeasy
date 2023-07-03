@@ -1,3 +1,8 @@
+## v0.0.4- 2023-07-03 - Bulk Record Create & Delete in Batches
+
+* Records created and deleted via bulk operations have in batches
+* User configurable batch size
+
 ## v0.0.3 - 2023-06-26 - Bulk Record Create & Delete
 
 * Records can immediately be created within a newly created zone
