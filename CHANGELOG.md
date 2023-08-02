@@ -1,4 +1,8 @@
-## v0.0.4- 2023-07-03 - Bulk Record Create & Delete in Batches
+## v0.0.5 - 2023-08-02 - TXT Record Fixes
+
+* Fix problems when manipulating TXT records with values longer than 255 characters
+
+## v0.0.4 - 2023-07-03 - Bulk Record Create & Delete in Batches
 
 * Records created and deleted via bulk operations have in batches
 * User configurable batch size
