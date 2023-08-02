@@ -339,6 +339,34 @@
     "redirectType": "Standard - 302",
     "description": "unsupported record",
     "type": "HTTPRED"
+  }, {
+    "failover": false,
+    "monitor": false,
+    "sourceId": 123123,
+    "dynamicDns": false,
+    "failed": false,
+    "gtdLocation": "DEFAULT",
+    "hardLink": false,
+    "ttl": 600,
+    "source": 1,
+    "name": "quotes",
+    "value": "\"This is a TXT record with \\\"quotes\\\" in it to ensure they are handled correctly\"",
+    "id": 11189900,
+    "type": "TXT"
+  }, {
+    "failover": false,
+    "monitor": false,
+    "sourceId": 123123,
+    "dynamicDns": false,
+    "failed": false,
+    "gtdLocation": "DEFAULT",
+    "hardLink": false,
+    "ttl": 600,
+    "source": 1,
+    "name": "split",
+    "value": "\"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc porttitor, odio eleifend ullamcorper ultricies, lectus lorem iaculis erat, ut porttitor erat orci eget est. Nunc tortor odio, suscipit non maximus in, euismod nec dolor. Nullam quis ultricies \"\"orci. Donec malesuada tempor accumsan. Vivamus erat eros, condimentum et urna vitae, aliquam congue quam. Phasellus nibh mauris, congue quis euismod vel, porta sed dui. Fusce massa dui, feugiat dapibus condimentum nec, vulputate eget ex. Sed vitae augue \"\"et ex facilisis placerat id sit amet tortor. Morbi pellentesque velit arcu, ut suscipit quam consectetur in. Quisque pulvinar ante sit amet egestas gravida. Etiam accumsan urna et suscipit pulvinar. Fusce ultricies congue sapien non semper. Morbi eleifen\"\"d molestie blandit. Suspendisse potenti. Fusce vestibulum commodo leo. Nulla cursus turpis sit amet tincidunt bibendum.\"",
+    "id": 11189901,
+    "type": "TXT"
   }],
 	"page": 0
 }

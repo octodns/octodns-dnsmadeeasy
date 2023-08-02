@@ -5,6 +5,7 @@
 import hashlib
 import hmac
 import logging
+import re
 from collections import defaultdict
 from time import gmtime, sleep, strftime
 
@@ -236,7 +237,10 @@ class DnsMadeEasyProvider(BaseProvider):
         return {'ttl': records[0]['ttl'], 'type': _type, 'values': values}
 
     def _data_for_TXT(self, _type, records):
-        values = [value['value'].replace(';', '\\;') for value in records]
+        values = [
+            re.sub(r'(?<!\\)\"\"', '', value['value'].replace(';', '\\;'))
+            for value in records
+        ]
         return {'ttl': records[0]['ttl'], 'type': _type, 'values': values}
 
     _data_for_SPF = _data_for_TXT
@@ -392,10 +396,12 @@ class DnsMadeEasyProvider(BaseProvider):
             }
 
     def _params_for_TXT(self, record):
+        # DNSMadeEasy doesn't need chunking, it accepts the record and will chunk it itself
         # DNSMadeEasy does not want values escaped
-        for value in record.chunked_values:
+        for value in record.values:
+            value = value.replace('\\;', ';')
             yield {
-                'value': value.replace('\\;', ';'),
+                'value': f'"{value}"',
                 'name': record.name,
                 'ttl': record.ttl,
                 'type': record._type,

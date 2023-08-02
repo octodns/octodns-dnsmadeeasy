@@ -149,10 +149,18 @@ ptr:
   ttl: 300
   type: PTR
   values: [foo.bar.com.]
+quotes:
+  ttl: 600
+  type: TXT
+  value: This is a TXT record with \"quotes\" in it to ensure they are handled correctly
 spf:
   ttl: 600
   type: SPF
   value: v=spf1 ip4:192.168.0.1/16-all
+split:
+  ttl: 600
+  type: TXT
+  value: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc porttitor, odio eleifend ullamcorper ultricies, lectus lorem iaculis erat, ut porttitor erat orci eget est. Nunc tortor odio, suscipit non maximus in, euismod nec dolor. Nullam quis ultricies orci. Donec malesuada tempor accumsan. Vivamus erat eros, condimentum et urna vitae, aliquam congue quam. Phasellus nibh mauris, congue quis euismod vel, porta sed dui. Fusce massa dui, feugiat dapibus condimentum nec, vulputate eget ex. Sed vitae augue et ex facilisis placerat id sit amet tortor. Morbi pellentesque velit arcu, ut suscipit quam consectetur in. Quisque pulvinar ante sit amet egestas gravida. Etiam accumsan urna et suscipit pulvinar. Fusce ultricies congue sapien non semper. Morbi eleifend molestie blandit. Suspendisse potenti. Fusce vestibulum commodo leo. Nulla cursus turpis sit amet tincidunt bibendum.
 sub:
   type: 'NS'
   values:
