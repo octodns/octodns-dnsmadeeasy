@@ -245,10 +245,8 @@ class DnsMadeEasyProvider(BaseProvider):
     def _data_for_TXT(self, _type, records):
         # Long TXT records in DNS Mady Easy have their value split into 255 character chunks, delimited by "".
         values = [
-            re.sub(
-                self.TXT_RECORD_VALUE_DELIMITER_PATTERN,
-                '',
-                value['value'].replace(';', '\\;'),
+            self.TXT_RECORD_VALUE_DELIMITER_PATTERN.sub(
+                '', value['value'].replace(';', '\\;')
             )
             for value in records
         ]
