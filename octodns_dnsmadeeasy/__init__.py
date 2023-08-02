@@ -187,6 +187,12 @@ class DnsMadeEasyProvider(BaseProvider):
             'TXT',
         )
     )
+    # Regex to replace any pair of double quotes that aren't escaped with a backslash. Used as a delimiter in long TXT
+    # records.
+    #
+    #  Will match: Alpha""Bravo
+    #  Will not match: Alpha\""Bravo
+    TXT_RECORD_VALUE_DELIMITER_PATTERN = re.compile(r'(?<!\\)\"\"')
 
     def __init__(
         self,
@@ -237,8 +243,13 @@ class DnsMadeEasyProvider(BaseProvider):
         return {'ttl': records[0]['ttl'], 'type': _type, 'values': values}
 
     def _data_for_TXT(self, _type, records):
+        # Long TXT records in DNS Mady Easy have their value split into 255 character chunks, delimited by "".
         values = [
-            re.sub(r'(?<!\\)\"\"', '', value['value'].replace(';', '\\;'))
+            re.sub(
+                self.TXT_RECORD_VALUE_DELIMITER_PATTERN,
+                '',
+                value['value'].replace(';', '\\;'),
+            )
             for value in records
         ]
         return {'ttl': records[0]['ttl'], 'type': _type, 'values': values}
