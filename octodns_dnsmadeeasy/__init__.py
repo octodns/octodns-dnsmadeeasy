@@ -5,6 +5,7 @@
 import hashlib
 import hmac
 import logging
+import re
 from collections import defaultdict
 from time import gmtime, sleep, strftime
 
@@ -186,6 +187,12 @@ class DnsMadeEasyProvider(BaseProvider):
             'TXT',
         )
     )
+    # Regex to replace any pair of double quotes that aren't escaped with a backslash. Used as a delimiter in long TXT
+    # records.
+    #
+    #  Will match: Alpha""Bravo
+    #  Will not match: Alpha\""Bravo
+    TXT_RECORD_VALUE_DELIMITER_PATTERN = re.compile(r'(?<!\\)\"\"')
 
     def __init__(
         self,
@@ -236,7 +243,13 @@ class DnsMadeEasyProvider(BaseProvider):
         return {'ttl': records[0]['ttl'], 'type': _type, 'values': values}
 
     def _data_for_TXT(self, _type, records):
-        values = [value['value'].replace(';', '\\;') for value in records]
+        # Long TXT records in DNS Mady Easy have their value split into 255 character chunks, delimited by "".
+        values = [
+            self.TXT_RECORD_VALUE_DELIMITER_PATTERN.sub(
+                '', value['value'].replace(';', '\\;')
+            )
+            for value in records
+        ]
         return {'ttl': records[0]['ttl'], 'type': _type, 'values': values}
 
     _data_for_SPF = _data_for_TXT
@@ -392,10 +405,12 @@ class DnsMadeEasyProvider(BaseProvider):
             }
 
     def _params_for_TXT(self, record):
+        # DNSMadeEasy doesn't need chunking, it accepts the record and will chunk it itself
         # DNSMadeEasy does not want values escaped
-        for value in record.chunked_values:
+        for value in record.values:
+            value = value.replace('\\;', ';')
             yield {
-                'value': value.replace('\\;', ';'),
+                'value': f'"{value}"',
                 'name': record.name,
                 'ttl': record.ttl,
                 'type': record._type,

@@ -103,14 +103,14 @@ class TestDnsMadeEasyProvider(TestCase):
 
                 zone = Zone('unit.tests.', [])
                 provider.populate(zone)
-                self.assertEqual(14, len(zone.records))
+                self.assertEqual(16, len(zone.records))
                 changes = self.expected.changes(zone, provider)
                 self.assertEqual(0, len(changes))
 
         # 2nd populate makes no network calls/all from cache
         again = Zone('unit.tests.', [])
         provider.populate(again)
-        self.assertEqual(14, len(again.records))
+        self.assertEqual(16, len(again.records))
 
         # bust the cache
         del provider._zone_records[zone.name]
@@ -284,10 +284,24 @@ class TestDnsMadeEasyProvider(TestCase):
                             'gtdLocation': 'DEFAULT',
                         },
                         {
+                            'value': '"This is a TXT record with \\"quotes\\" in it to ensure they are handled correctly"',
+                            'name': 'quotes',
+                            'ttl': 600,
+                            'type': 'TXT',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
                             'value': '"v=spf1 ip4:192.168.0.1/16-all"',
                             'name': 'spf',
                             'ttl': 600,
                             'type': 'SPF',
+                            'gtdLocation': 'DEFAULT',
+                        },
+                        {
+                            'value': '"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc porttitor, odio eleifend ullamcorper ultricies, lectus lorem iaculis erat, ut porttitor erat orci eget est. Nunc tortor odio, suscipit non maximus in, euismod nec dolor. Nullam quis ultricies orci. Donec malesuada tempor accumsan. Vivamus erat eros, condimentum et urna vitae, aliquam congue quam. Phasellus nibh mauris, congue quis euismod vel, porta sed dui. Fusce massa dui, feugiat dapibus condimentum nec, vulputate eget ex. Sed vitae augue et ex facilisis placerat id sit amet tortor. Morbi pellentesque velit arcu, ut suscipit quam consectetur in. Quisque pulvinar ante sit amet egestas gravida. Etiam accumsan urna et suscipit pulvinar. Fusce ultricies congue sapien non semper. Morbi eleifend molestie blandit. Suspendisse potenti. Fusce vestibulum commodo leo. Nulla cursus turpis sit amet tincidunt bibendum."',
+                            'name': 'split',
+                            'ttl': 600,
+                            'type': 'TXT',
                             'gtdLocation': 'DEFAULT',
                         },
                         {
