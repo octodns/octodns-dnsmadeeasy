@@ -354,6 +354,18 @@ class DnsMadeEasyProvider(BaseProvider):
 
         return super().supports(record)
 
+    def _process_desired_zone(self, desired):
+        for record in desired.records:
+            if record._type == 'TXT' and any('"' in v for v in record.values):
+                msg = 'Quotes not supported in TXT values'
+                fallback = 'removing them'
+                self.supports_warn_or_except(msg, fallback)
+                record = record.copy()
+                record.values = [v.replace('"', '') for v in record.values]
+                desired.add_record(record, replace=True)
+
+        return desired
+
     def _params_for_multiple(self, record):
         for value in record.values:
             yield {

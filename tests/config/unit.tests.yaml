@@ -149,10 +149,6 @@ ptr:
   ttl: 300
   type: PTR
   values: [foo.bar.com.]
-quotes:
-  ttl: 600
-  type: TXT
-  value: This is a TXT record with \"quotes\" in it to ensure they are handled correctly
 spf:
   ttl: 600
   type: SPF

@@ -11,6 +11,7 @@ from requests import HTTPError
 from requests_mock import ANY
 from requests_mock import mock as requests_mock
 
+from octodns.provider import SupportsException
 from octodns.provider.yaml import YamlProvider
 from octodns.record import Record
 from octodns.zone import Zone
@@ -103,14 +104,14 @@ class TestDnsMadeEasyProvider(TestCase):
 
                 zone = Zone('unit.tests.', [])
                 provider.populate(zone)
-                self.assertEqual(16, len(zone.records))
+                self.assertEqual(15, len(zone.records))
                 changes = self.expected.changes(zone, provider)
                 self.assertEqual(0, len(changes))
 
         # 2nd populate makes no network calls/all from cache
         again = Zone('unit.tests.', [])
         provider.populate(again)
-        self.assertEqual(16, len(again.records))
+        self.assertEqual(15, len(again.records))
 
         # bust the cache
         del provider._zone_records[zone.name]
@@ -281,13 +282,6 @@ class TestDnsMadeEasyProvider(TestCase):
                             'name': 'ptr',
                             'ttl': 300,
                             'type': 'PTR',
-                            'gtdLocation': 'DEFAULT',
-                        },
-                        {
-                            'value': '"This is a TXT record with \\"quotes\\" in it to ensure they are handled correctly"',
-                            'name': 'quotes',
-                            'ttl': 600,
-                            'type': 'TXT',
                             'gtdLocation': 'DEFAULT',
                         },
                         {
@@ -630,3 +624,24 @@ class TestDnsMadeEasyProvider(TestCase):
             any_order=True,
         )
         self.assertEqual(9, provider._client._request.call_count)
+
+    def test_quotes_in_TXT(self):
+        provider = DnsMadeEasyProvider('test', 'api', 'secret')
+        desired = Zone('unit.tests.', [])
+        value = 'This has "quote" chars in it'
+        txt = Record.new(
+            desired, 'txt', {'ttl': 42, 'type': 'TXT', 'value': value}
+        )
+        desired.add_record(txt)
+
+        with self.assertRaises(SupportsException) as ctx:
+            provider._process_desired_zone(desired)
+        self.assertEqual(
+            'test: Quotes not supported in TXT values', str(ctx.exception)
+        )
+
+        provider.strict_supports = False
+        got = provider._process_desired_zone(desired.copy())
+        self.assertEqual(
+            [value.replace('"', '')], next(iter(got.records)).values
+        )
