@@ -1,3 +1,8 @@
+## v0.0.? - 20??-??-?? - ???
+
+* DNS Made Easy does not support quotes in TXT values, add strict_supports check
+  around it w/False work-around.
+
 ## v0.0.5 - 2023-08-02 - TXT Record Fixes
 
 * Fix problems when manipulating TXT records with values longer than 255 characters

@@ -11,6 +11,7 @@ from requests import HTTPError
 from requests_mock import ANY
 from requests_mock import mock as requests_mock
 
+from octodns.provider import SupportsException
 from octodns.provider.yaml import YamlProvider
 from octodns.record import Record
 from octodns.zone import Zone
@@ -623,3 +624,24 @@ class TestDnsMadeEasyProvider(TestCase):
             any_order=True,
         )
         self.assertEqual(9, provider._client._request.call_count)
+
+    def test_quotes_in_TXT(self):
+        provider = DnsMadeEasyProvider('test', 'api', 'secret')
+        desired = Zone('unit.tests.', [])
+        value = 'This has "quote" chars in it'
+        txt = Record.new(
+            desired, 'txt', {'ttl': 42, 'type': 'TXT', 'value': value}
+        )
+        desired.add_record(txt)
+
+        with self.assertRaises(SupportsException) as ctx:
+            provider._process_desired_zone(desired)
+        self.assertEqual(
+            'test: Quotes not supported in TXT values', str(ctx.exception)
+        )
+
+        provider.strict_supports = False
+        got = provider._process_desired_zone(desired.copy())
+        self.assertEqual(
+            [value.replace('"', '')], next(iter(got.records)).values
+        )
