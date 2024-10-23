@@ -1,5 +1,13 @@
-## v0.0.? - 20??-??-?? - ???
+## v1.0.0 - 2024-??-?? - ???
 
+Noteworthy Changes:
+
+* Complete removal of SPF record support, records should be transitioned to TXT
+  values before updating to this version.
+
+Changes:
+
+* Address pending octoDNS 2.x deprecations, require minimum of 1.5.x
 * DNS Made Easy does not support quotes in TXT values, add strict_supports check
   around it w/False work-around.
 

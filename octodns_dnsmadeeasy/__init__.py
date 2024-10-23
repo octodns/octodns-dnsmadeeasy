@@ -174,19 +174,7 @@ class DnsMadeEasyProvider(BaseProvider):
     SUPPORTS_DYNAMIC = False
     SUPPORTS_ROOT_NS = True
     SUPPORTS = set(
-        (
-            'A',
-            'AAAA',
-            'ALIAS',
-            'CAA',
-            'CNAME',
-            'MX',
-            'NS',
-            'PTR',
-            'SPF',
-            'SRV',
-            'TXT',
-        )
+        ('A', 'AAAA', 'ALIAS', 'CAA', 'CNAME', 'MX', 'NS', 'PTR', 'SRV', 'TXT')
     )
     # Regex to replace any pair of double quotes that aren't escaped with a backslash. Used as a delimiter in long TXT
     # records.
@@ -252,8 +240,6 @@ class DnsMadeEasyProvider(BaseProvider):
             for value in records
         ]
         return {'ttl': records[0]['ttl'], 'type': _type, 'values': values}
-
-    _data_for_SPF = _data_for_TXT
 
     def _data_for_MX(self, _type, records):
         values = []
@@ -428,8 +414,6 @@ class DnsMadeEasyProvider(BaseProvider):
                 'ttl': record.ttl,
                 'type': record._type,
             }
-
-    _params_for_SPF = _params_for_TXT
 
     def _params_for_CAA(self, record):
         for value in record.values:
