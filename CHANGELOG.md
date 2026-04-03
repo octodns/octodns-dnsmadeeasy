@@ -1,3 +1,8 @@
+## 1.0.1 - 2026-04-03
+
+Patch:
+* Use new [changelet](https://github.com/octodns/changelet) tooling - [#55](https://github.com/octodns/octodns-dnsmadeeasy/pull/55)
+
 ## v1.0.0 - 2025-05-03 - Long overdue 1.0
 
 Noteworthy Changes:
